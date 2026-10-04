@@ -1,27 +1,1291 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streaming TV Indonesia & Dunia</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>TVStream — Streaming TV Indonesia & Dunia</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+<link rel="manifest" href='data:application/manifest+json,{"name":"TVStream","short_name":"TVStream","start_url":".","display":"standalone","background_color":"%230f0f0f","theme_color":"%230f0f0f","icons":[{"src":"data:image/svg%2Bxml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>","sizes":"192x192","type":"image/svg+xml"}]}'>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<style>
+:root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface-2: #242424;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --text-dim: #999;
+    --primary: #ff3b3b;
+    --primary-hover: #ff5555;
+    --accent: #4a9eff;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --header-h: 56px;
+    --nav-h: 64px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+[data-theme="light"] {
+    --bg: #f5f5f5;
+    --surface: #ffffff;
+    --surface-2: #f0f0f0;
+    --border: #e0e0e0;
+    --text: #1a1a1a;
+    --text-dim: #666;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overscroll-behavior-y: none; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: background .2s, color .2s;
+    padding-bottom: calc(var(--nav-h) + var(--safe-bottom));
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ============ HEADER ============ */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--surface);
+    padding-top: var(--safe-top);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+}
+.header-inner {
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+}
+.logo {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.logo span { font-size: 1.3rem; }
+.search-wrap {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
+.search-wrap input {
+    width: 100%;
+    padding: 9px 12px 9px 34px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-size: .9rem;
+    outline: none;
+    transition: border-color .2s;
+}
+.search-wrap input:focus { border-color: var(--primary); }
+.search-wrap input::placeholder { color: var(--text-dim); }
+.search-icon {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+    font-size: .95rem;
+}
+.icon-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .2s;
+    flex-shrink: 0;
+}
+.icon-btn:active { background: var(--surface-2); }
+
+/* ============ CATEGORY CHIPS ============ */
+.categories {
+    display: flex;
+    gap: 8px;
+    padding: 0 14px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.categories::-webkit-scrollbar { display: none; }
+.chip {
+    padding: 6px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    font-size: .82rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all .2s;
+    flex-shrink: 0;
+}
+.chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+/* ============ PLAYER ============ */
+#player-section {
+    position: sticky;
+    top: calc(var(--header-h) + var(--safe-top));
+    z-index: 40;
+    background: #000;
+    display: none;
+}
+#player-section.active { display: block; }
+.player-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    overflow: hidden;
+}
+#video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #000;
+}
+.player-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(0,0,0,.75), transparent);
+    pointer-events: none;
+}
+.player-title {
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+    text-shadow: 0 1px 4px rgba(0,0,0,.8);
+}
+.player-actions {
+    display: flex;
+    gap: 6px;
+    pointer-events: auto;
+}
+.player-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.55);
+    border: none;
+    color: #fff;
+    font-size: .95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+}
+.player-btn:active { background: rgba(0,0,0,.8); }
+.player-close {
+    position: absolute;
+    top: 10px; right: 12px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(255,59,59,.9);
+    border: none;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+}
+.player-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.6);
+    z-index: 3;
+}
+.player-loading.hidden { display: none; }
+.spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.player-error {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.85);
+    color: #fff;
+    padding: 20px;
+    text-align: center;
+    gap: 10px;
+    z-index: 4;
+}
+.player-error.show { display: flex; }
+.player-error button {
+    padding: 8px 18px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ============ CONTENT ============ */
+main { padding: 14px; min-height: 60vh; }
+.section-title {
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    padding-left: 2px;
+}
+
+/* ============ CHANNEL GRID ============ */
+.channel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.channel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform .15s, border-color .2s, background .2s;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.channel-card:active {
+    transform: scale(.96);
+    background: var(--surface-2);
+}
+.channel-card.playing {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+.channel-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: var(--surface-2);
+    flex-shrink: 0;
+}
+.channel-name {
+    font-size: .78rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+    max-width: 100%;
+}
+.channel-cat {
+    font-size: .62rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.fav-btn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.4);
+    border: none;
+    color: #fff;
+    font-size: .8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+.fav-btn.active { color: var(--primary); }
+
+/* ============ EMPTY STATE ============ */
+.empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-dim);
+}
+.empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.empty-text { font-size: .9rem; line-height: 1.5; }
+
+/* ============ BOTTOM NAV ============ */
+.bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: calc(var(--nav-h) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 60;
+    backdrop-filter: blur(20px);
+}
+.nav-item {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    font-size: .68rem;
+    font-weight: 600;
+    transition: color .2s;
+    padding: 0;
+}
+.nav-item .nav-icon { font-size: 1.25rem; line-height: 1; }
+.nav-item.active { color: var(--primary); }
+
+/* ============ SETTINGS / MODAL ============ */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    z-index: 100;
+    display: none;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+}
+.modal.open { display: flex; }
+.modal-content {
+    width: 100%;
+    max-height: 85vh;
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 18px calc(20px + var(--safe-bottom));
+    overflow-y: auto;
+    animation: slideUp .25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+}
+.modal-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+.form-group { margin-bottom: 14px; }
+.form-group label {
+    display: block;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+.form-group input, .form-group textarea {
+    width: 100%;
+    padding: 11px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: .9rem;
+    outline: none;
+    font-family: inherit;
+    resize: vertical;
+}
+.form-group input:focus, .form-group textarea:focus { border-color: var(--primary); }
+.form-group small {
+    display: block;
+    color: var(--text-dim);
+    font-size: .7rem;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+.btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: .9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity .2s;
+    margin-bottom: 8px;
+}
+.btn:active { opacity: .8; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: #3a1a1a; color: #ff6b6b; border: 1px solid #4a2020; }
+
+/* ============ TOAST ============ */
+#toast {
+    position: fixed;
+    bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: .82rem;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: all .3s;
+    z-index: 200;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    max-width: 90%;
+    text-align: center;
+}
+#toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ============ LOADING SKELETON ============ */
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+}
+.skeleton-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    height: 110px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+}
+
+/* ============ SCROLLBAR HIDDEN ON MOBILE ============ */
+::-webkit-scrollbar { width: 0; height: 0; }
+</style>
 </head>
 <body>
-    <header>
-        <h1>📺 TV Streaming</h1>
-        <input type="text" id="search-input" placeholder="Cari channel...">
-    </header>
-    
-    <main>
-        <div id="player-container">
-            <video id="video-player" controls></video>
-        </div>
-        <div id="channel-list">
-            <!-- Daftar channel akan dimuat di sini oleh JavaScript -->
-        </div>
-    </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="app.js"></script>
+<!-- ============ HEADER ============ -->
+<header>
+    <div class="header-inner">
+        <div class="logo"><span>📺</span>TVStream</div>
+        <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="search" id="search-input" placeholder="Cari channel..." autocomplete="off">
+        </div>
+        <button class="icon-btn" id="theme-toggle" title="Ubah tema">🌙</button>
+    </div>
+    <div class="categories" id="categories"></div>
+</header>
+
+<!-- ============ PLAYER ============ -->
+<section id="player-section">
+    <div class="player-wrap">
+        <video id="video" playsinline webkit-playsinline controls></video>
+        <div class="player-loading hidden" id="player-loading"><div class="spinner"></div></div>
+        <div class="player-error" id="player-error">
+            <div style="font-size:2rem">⚠️</div>
+            <div style="font-size:.9rem;font-weight:600">Gagal memuat stream</div>
+            <div style="font-size:.75rem;color:#bbb" id="error-msg">Cek koneksi atau coba proxy lain</div>
+            <button id="retry-btn">Coba Lagi</button>
+        </div>
+        <div class="player-overlay">
+            <div class="player-title" id="player-title">—</div>
+            <div class="player-actions">
+                <button class="player-btn" id="pip-btn" title="Picture in Picture">⧉</button>
+                <button class="player-btn" id="fs-btn" title="Fullscreen">⛶</button>
+            </div>
+        </div>
+        <button class="player-close" id="player-close">✕</button>
+    </div>
+</section>
+
+<!-- ============ MAIN ============ -->
+<main>
+    <div id="content">
+        <div class="skeleton-grid" id="skeleton">
+            <div class="skeleton-card"></div><div class="skeleton-card"></div>
+            <div class="skeleton-card"></div><div class="skeleton-card"></div>
+            <div class="skeleton-card"></div><div class="skeleton-card"></div>
+        </div>
+    </div>
+</main>
+
+<!-- ============ BOTTOM NAV ============ -->
+<nav class="bottom-nav">
+    <button class="nav-item active" data-tab="all">
+        <span class="nav-icon">📡</span><span>Semua</span>
+    </button>
+    <button class="nav-item" data-tab="favorites">
+        <span class="nav-icon">⭐</span><span>Favorit</span>
+    </button>
+    <button class="nav-item" data-tab="history">
+        <span class="nav-icon">🕒</span><span>Riwayat</span>
+    </button>
+    <button class="nav-item" data-tab="settings">
+        <span class="nav-icon">⚙️</span><span>Setelan</span>
+    </button>
+</nav>
+
+<!-- ============ SETTINGS MODAL ============ -->
+<div class="modal" id="settings-modal">
+    <div class="modal-content">
+        <div class="modal-handle"></div>
+        <div class="modal-title">⚙️ Setelan</div>
+
+        <div class="form-group">
+            <label>URL Proxy (untuk bypass CORS)</label>
+            <input type="text" id="proxy-input" placeholder="https://proxy-anda.com/m3u8-proxy?url=">
+            <small>Kosongkan jika ingin memutar stream langsung (tidak semua stream berhasil karena CORS).</small>
+        </div>
+
+        <div class="form-group">
+            <label>Sumber Playlist M3U (satu URL per baris)</label>
+            <textarea id="playlists-input" rows="5" placeholder="https://...m3u"></textarea>
+            <small>Tambahkan beberapa sumber untuk menggabungkan channel dari berbagai penyedia.</small>
+        </div>
+
+        <button class="btn btn-primary" id="save-settings">💾 Simpan Setelan</button>
+        <button class="btn btn-secondary" id="reload-channels">🔄 Muat Ulang Channel</button>
+        <button class="btn btn-secondary" id="reset-settings">↩️ Reset ke Default</button>
+        <button class="btn btn-danger" id="clear-data">🗑️ Hapus Favorit & Riwayat</button>
+
+        <div style="text-align:center;color:var(--text-dim);font-size:.7rem;margin-top:16px">
+            TVStream v2.0 &middot; Data tersimpan lokal di perangkat Anda
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ==========================================================================
+   TVStream — Single File IPTV Player
+   ========================================================================== */
+
+// ============ KONFIGURASI DEFAULT ============
+const DEFAULT_CONFIG = {
+    proxy: 'https://cors-proxy.hase0278.workers.dev/?url=', // ganti dengan proxy Anda
+    playlists: [
+        'https://iptv-org.github.io/iptv/countries/id.m3u',
+        'https://iptv-org.github.io/iptv/categories/news.m3u',
+        'https://iptv-org.github.io/iptv/categories/sports.m3u'
+    ]
+};
+
+// ============ STATE ============
+const state = {
+    channels: [],
+    filtered: [],
+    currentTab: 'all',
+    currentCategory: 'All',
+    currentPlaying: null,
+    favorites: new Set(),
+    history: [],
+    proxyUrl: '',
+    playlists: [],
+    hls: null
+};
+
+// ============ STORAGE ============
+const Store = {
+    get(key, def) {
+        try {
+            const v = localStorage.getItem('tvstream_' + key);
+            return v ? JSON.parse(v) : def;
+        } catch { return def; }
+    },
+    set(key, val) {
+        try { localStorage.setItem('tvstream_' + key, JSON.stringify(val)); } catch {}
+    },
+    remove(key) { localStorage.removeItem('tvstream_' + key); }
+};
+
+// ============ UI HELPERS ============
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+function toast(msg, duration = 2000) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+}
+
+// ============ M3U PARSER ============
+function parseM3U(text) {
+    const lines = text.split(/\r?\n/);
+    const out = [];
+    let cur = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        if (line.startsWith('#EXTINF:')) {
+            const commaIdx = line.indexOf(',');
+            const meta = commaIdx > -1 ? line.substring(8, commaIdx) : line.substring(8);
+            const name = commaIdx > -1 ? line.substring(commaIdx + 1).trim() : 'Tanpa Nama';
+
+            const attr = (key) => {
+                const m = meta.match(new RegExp(key + '="([^"]*)"', 'i'));
+                return m ? m[1] : '';
+            };
+
+            cur = {
+                name: name || 'Tanpa Nama',
+                logo: attr('tvg-logo') || '',
+                group: attr('group-title') || 'Lainnya',
+                tvgId: attr('tvg-id') || '',
+                url: ''
+            };
+        } else if (line.startsWith('#EXTVLCOPT') || line.startsWith('#KODIPROP') || line.startsWith('#')) {
+            continue;
+        } else if (/^https?:\/\//i.test(line) || line.startsWith('rtmp://')) {
+            if (cur) {
+                cur.url = line;
+                if (cur.name && cur.url) out.push(cur);
+                cur = null;
+            }
+        }
+    }
+    return out;
+}
+
+// ============ FETCH PLAYLIST ============
+async function fetchPlaylist(url) {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.text();
+}
+
+async function loadAllPlaylists() {
+    showSkeleton();
+    const all = [];
+    const seen = new Set();
+
+    const tasks = state.playlists.map(async (url) => {
+        try {
+            const text = await fetchPlaylist(url);
+            const chans = parseM3U(text);
+            chans.forEach(c => {
+                const key = (c.name + '|' + c.url).toLowerCase();
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    all.push(c);
+                }
+            });
+        } catch (e) {
+            console.warn('Gagal memuat playlist:', url, e);
+        }
+    });
+
+    await Promise.allSettled(tasks);
+
+    state.channels = all;
+    Store.set('channels_cache', { ts: Date.now(), data: all });
+    buildCategories();
+    applyFilter();
+}
+
+// ============ CATEGORY ============
+function buildCategories() {
+    const set = new Set(['All']);
+    state.channels.forEach(c => {
+        if (c.group) set.add(c.group);
+    });
+    const arr = Array.from(set).sort((a, b) => {
+        if (a === 'All') return -1;
+        if (b === 'All') return 1;
+        return a.localeCompare(b);
+    });
+
+    const wrap = $('#categories');
+    wrap.innerHTML = '';
+    arr.slice(0, 40).forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'chip' + (cat === state.currentCategory ? ' active' : '');
+        btn.textContent = cat === 'All' ? '📺 Semua' : cat;
+        btn.addEventListener('click', () => {
+            state.currentCategory = cat;
+            buildCategories();
+            applyFilter();
+        });
+        wrap.appendChild(btn);
+    });
+}
+
+// ============ FILTER & RENDER ============
+function applyFilter() {
+    const q = ($('#search-input').value || '').toLowerCase().trim();
+    let list = state.channels.slice();
+
+    if (state.currentCategory !== 'All') {
+        list = list.filter(c => c.group === state.currentCategory);
+    }
+    if (q) {
+        list = list.filter(c =>
+            c.name.toLowerCase().includes(q) ||
+            c.group.toLowerCase().includes(q)
+        );
+    }
+    state.filtered = list;
+    renderCurrentTab();
+}
+
+function renderCurrentTab() {
+    const c = $('#content');
+    c.innerHTML = '';
+
+    if (state.currentTab === 'favorites') {
+        renderFavorites();
+        return;
+    }
+    if (state.currentTab === 'history') {
+        renderHistory();
+        return;
+    }
+    if (state.currentTab === 'settings') {
+        openSettings();
+        return;
+    }
+    renderChannelGrid(state.filtered);
+}
+
+function renderChannelGrid(list) {
+    const c = $('#content');
+    if (!list.length) {
+        c.innerHTML = `
+            <div class="empty">
+                <div class="empty-icon">📭</div>
+                <div class="empty-text">Tidak ada channel ditemukan.<br>Coba ubah kata kunci atau kategori.</div>
+            </div>`;
+        return;
+    }
+
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.textContent = `${list.length} channel tersedia`;
+    c.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'channel-grid';
+    c.appendChild(grid);
+
+    // Batasi render untuk performa (pagination sederhana)
+    const RENDER_LIMIT = 300;
+    const toRender = list.slice(0, RENDER_LIMIT);
+
+    toRender.forEach(ch => {
+        grid.appendChild(makeChannelCard(ch));
+    });
+
+    if (list.length > RENDER_LIMIT) {
+        const more = document.createElement('button');
+        more.className = 'btn btn-secondary';
+        more.textContent = `Tampilkan ${list.length - RENDER_LIMIT} channel lainnya...`;
+        more.addEventListener('click', () => {
+            more.remove();
+            const rest = list.slice(RENDER_LIMIT);
+            rest.forEach(ch => grid.appendChild(makeChannelCard(ch)));
+        });
+        c.appendChild(more);
+    }
+}
+
+function makeChannelCard(ch) {
+    const card = document.createElement('div');
+    card.className = 'channel-card' + (state.currentPlaying === ch.url ? ' playing' : '');
+    card.dataset.url = ch.url;
+
+    const isFav = state.favorites.has(ch.url);
+
+    card.innerHTML = `
+        <button class="fav-btn ${isFav ? 'active' : ''}" data-fav="${escapeHtml(ch.url)}">${isFav ? '★' : '☆'}</button>
+        <img class="channel-logo" src="${escapeHtml(ch.logo || '')}" alt="" loading="lazy"
+             onerror="this.style.visibility='hidden'">
+        <div class="channel-name">${escapeHtml(ch.name)}</div>
+        <div class="channel-cat">${escapeHtml(ch.group)}</div>
+    `;
+
+    card.querySelector('.fav-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFavorite(ch);
+    });
+
+    card.addEventListener('click', () => playChannel(ch));
+    return card;
+}
+
+// ============ FAVORITES ============
+function toggleFavorite(ch) {
+    if (state.favorites.has(ch.url)) {
+        state.favorites.delete(ch.url);
+        toast('Dihapus dari favorit');
+    } else {
+        state.favorites.add(ch.url);
+        toast('Ditambahkan ke favorit ⭐');
+    }
+    Store.set('favorites', Array.from(state.favorites));
+    // update tombol di kartu
+    const btn = document.querySelector(`.fav-btn[data-fav="${CSS.escape(ch.url)}"]`);
+    if (btn) {
+        const active = state.favorites.has(ch.url);
+        btn.classList.toggle('active', active);
+        btn.textContent = active ? '★' : '☆';
+    }
+    if (state.currentTab === 'favorites') renderFavorites();
+}
+
+function renderFavorites() {
+    const favs = state.channels.filter(c => state.favorites.has(c.url));
+    const c = $('#content');
+    if (!favs.length) {
+        c.innerHTML = `
+            <div class="empty">
+                <div class="empty-icon">⭐</div>
+                <div class="empty-text">Belum ada channel favorit.<br>Ketuk ikon bintang pada channel untuk menambahkannya.</div>
+            </div>`;
+        return;
+    }
+    c.innerHTML = '<div class="section-title">Favorit Anda</div>';
+    const grid = document.createElement('div');
+    grid.className = 'channel-grid';
+    favs.forEach(ch => grid.appendChild(makeChannelCard(ch)));
+    c.appendChild(grid);
+}
+
+// ============ HISTORY ============
+function addHistory(ch) {
+    state.history = state.history.filter(h => h.url !== ch.url);
+    state.history.unshift({
+        name: ch.name,
+        url: ch.url,
+        logo: ch.logo,
+        group: ch.group,
+        ts: Date.now()
+    });
+    state.history = state.history.slice(0, 50);
+    Store.set('history', state.history);
+}
+
+function renderHistory() {
+    const c = $('#content');
+    if (!state.history.length) {
+        c.innerHTML = `
+            <div class="empty">
+                <div class="empty-icon">🕒</div>
+                <div class="empty-text">Belum ada riwayat tontonan.</div>
+            </div>`;
+        return;
+    }
+    c.innerHTML = '<div class="section-title">Terakhir Ditonton</div>';
+    const grid = document.createElement('div');
+    grid.className = 'channel-grid';
+
+    state.history.forEach(h => {
+        const card = document.createElement('div');
+        card.className = 'channel-card';
+        const date = new Date(h.ts);
+        const timeStr = date.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+        card.innerHTML = `
+            <img class="channel-logo" src="${escapeHtml(h.logo || '')}" alt="" loading="lazy"
+                 onerror="this.style.visibility='hidden'">
+            <div class="channel-name">${escapeHtml(h.name)}</div>
+            <div class="channel-cat">${escapeHtml(timeStr)}</div>
+        `;
+        card.addEventListener('click', () => playChannel(h));
+        grid.appendChild(card);
+    });
+    c.appendChild(grid);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'btn btn-danger';
+    clearBtn.textContent = '🗑️ Hapus Riwayat';
+    clearBtn.style.marginTop = '14px';
+    clearBtn.addEventListener('click', () => {
+        state.history = [];
+        Store.set('history', []);
+        renderHistory();
+        toast('Riwayat dihapus');
+    });
+    c.appendChild(clearBtn);
+}
+
+// ============ PLAYER ============
+function playChannel(ch) {
+    const section = $('#player-section');
+    section.classList.add('active');
+    $('#player-title').textContent = ch.name;
+    state.currentPlaying = ch.url;
+    addHistory(ch);
+
+    // scroll ke player
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    startPlayback(ch);
+}
+
+function buildProxiedUrl(url) {
+    if (!state.proxyUrl) return url;
+    // Hindari double-proxy jika URL sudah melalui proxy
+    if (url.startsWith(state.proxyUrl)) return url;
+    return state.proxyUrl + encodeURIComponent(url);
+}
+
+function startPlayback(ch) {
+    const video = $('#video');
+    const loading = $('#player-loading');
+    const errBox = $('#player-error');
+    errBox.classList.remove('show');
+    loading.classList.remove('hidden');
+
+    // Bersihkan HLS sebelumnya
+    if (state.hls) {
+        try { state.hls.destroy(); } catch {}
+        state.hls = null;
+    }
+
+    const url = buildProxiedUrl(ch.url);
+
+    if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            enableWorker: true,
+            lowLatencyMode: false,
+            backBufferLength: 30,
+            fragLoadingMaxRetry: 6,
+            manifestLoadingMaxRetry: 4,
+            levelLoadingMaxRetry: 4,
+            manifestLoadingTimeOut: 15000,
+            fragLoadingTimeOut: 25000
+        });
+        state.hls = hls;
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            loading.classList.add('hidden');
+            video.play().catch(() => {});
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.warn('HLS error', data);
+            if (!data.fatal) return;
+
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                hls.startLoad();
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                hls.recoverMediaError();
+            } else {
+                showPlayerError('Stream tidak dapat diputar. Coba channel lain atau atur proxy.');
+            }
+        });
+
+        hls.loadSource(url);
+        hls.attachMedia(video);
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari native HLS
+        video.src = url;
+        video.addEventListener('loadedmetadata', () => {
+            loading.classList.add('hidden');
+            video.play().catch(() => {});
+        }, { once: true });
+        video.addEventListener('error', () => {
+            showPlayerError('Stream tidak dapat diputar.');
+        }, { once: true });
+    } else {
+        showPlayerError('Browser Anda tidak mendukung pemutaran HLS.');
+    }
+}
+
+function showPlayerError(msg) {
+    $('#player-loading').classList.add('hidden');
+    $('#error-msg').textContent = msg;
+    $('#player-error').classList.add('show');
+}
+
+$('#retry-btn').addEventListener('click', () => {
+    const ch = state.channels.find(c => c.url === state.currentPlaying) ||
+               state.history.find(h => h.url === state.currentPlaying);
+    if (ch) startPlayback(ch);
+});
+
+$('#player-close').addEventListener('click', () => {
+    if (state.hls) { try { state.hls.destroy(); } catch {} state.hls = null; }
+    const video = $('#video');
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    $('#player-section').classList.remove('active');
+    state.currentPlaying = null;
+    // refresh grid highlight
+    document.querySelectorAll('.channel-card.playing').forEach(el => el.classList.remove('playing'));
+});
+
+$('#pip-btn').addEventListener('click', async () => {
+    const video = $('#video');
+    try {
+        if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+        } else if (video.requestPictureInPicture) {
+            await video.requestPictureInPicture();
+        } else {
+            toast('PiP tidak didukung browser ini');
+        }
+    } catch (e) { toast('PiP gagal: ' + e.message); }
+});
+
+$('#fs-btn').addEventListener('click', () => {
+    const el = $('#player-section');
+    if (document.fullscreenElement) {
+        document.exitFullscreen();
+    } else if (el.requestFullscreen) {
+        el.requestFullscreen();
+    } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+    }
+});
+
+// ============ SEARCH ============
+let searchTimer;
+$('#search-input').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(applyFilter, 200);
+});
+
+// ============ TAB NAVIGATION ============
+$$('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+
+        if (tab === 'settings') {
+            openSettings();
+            return;
+        }
+
+        $$('.nav-item').forEach(b => b.classList.toggle('active', b === btn));
+        state.currentTab = tab;
+
+        if (tab === 'favorites') renderFavorites();
+        else if (tab === 'history') renderHistory();
+        else applyFilter();
+    });
+});
+
+// ============ SETTINGS ============
+function openSettings() {
+    $('#proxy-input').value = state.proxyUrl || '';
+    $('#playlists-input').value = state.playlists.join('\n');
+    $('#settings-modal').classList.add('open');
+}
+
+function closeSettings() {
+    $('#settings-modal').classList.remove('open');
+}
+
+$('#settings-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'settings-modal') closeSettings();
+});
+
+$('#save-settings').addEventListener('click', () => {
+    const proxy = $('#proxy-input').value.trim();
+    const lists = $('#playlists-input').value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => /^https?:\/\//i.test(s));
+
+    state.proxyUrl = proxy;
+    state.playlists = lists.length ? lists : DEFAULT_CONFIG.playlists;
+
+    Store.set('proxy', state.proxyUrl);
+    Store.set('playlists', state.playlists);
+
+    toast('Setelan disimpan ✓');
+    closeSettings();
+
+    // Muat ulang channel
+    loadAllPlaylists();
+});
+
+$('#reload-channels').addEventListener('click', () => {
+    closeSettings();
+    toast('Memuat ulang channel...');
+    loadAllPlaylists();
+});
+
+$('#reset-settings').addEventListener('click', () => {
+    if (!confirm('Reset semua setelan ke default?')) return;
+    Store.remove('proxy');
+    Store.remove('playlists');
+    Store.remove('channels_cache');
+    state.proxyUrl = DEFAULT_CONFIG.proxy;
+    state.playlists = DEFAULT_CONFIG.playlists.slice();
+    toast('Setelan direset');
+    closeSettings();
+    loadAllPlaylists();
+});
+
+$('#clear-data').addEventListener('click', () => {
+    if (!confirm('Hapus semua favorit dan riwayat tontonan?')) return;
+    state.favorites.clear();
+    state.history = [];
+    Store.set('favorites', []);
+    Store.set('history', []);
+    toast('Data dibersihkan');
+    closeSettings();
+});
+
+// ============ THEME ============
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    $('#theme-toggle').textContent = theme === 'light' ? '☀️' : '🌙';
+    Store.set('theme', theme);
+}
+
+$('#theme-toggle').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+});
+
+// ============ SKELETON ============
+function showSkeleton() {
+    const c = $('#content');
+    c.innerHTML = `
+        <div class="skeleton-grid">
+            ${'<div class="skeleton-card"></div>'.repeat(9)}
+        </div>`;
+}
+
+// ============ INIT ============
+async function init() {
+    // Load stored settings
+    state.proxyUrl = Store.get('proxy', DEFAULT_CONFIG.proxy);
+    state.playlists = Store.get('playlists', DEFAULT_CONFIG.playlists);
+    state.favorites = new Set(Store.get('favorites', []));
+    state.history = Store.get('history', []);
+
+    // Theme
+    const savedTheme = Store.get('theme', 'dark');
+    applyTheme(savedTheme);
+
+    // Coba pakai cache terlebih dahulu
+    const cache = Store.get('channels_cache');
+    if (cache && cache.data && cache.data.length) {
+        state.channels = cache.data;
+        buildCategories();
+        applyFilter();
+        // Lalu refresh dari sumber di background
+        loadAllPlaylists();
+    } else {
+        await loadAllPlaylists();
+    }
+
+    // Register service worker untuk PWA (inline)
+    if ('serviceWorker' in navigator) {
+        try {
+            const swCode = `
+                const C='tvstream-v1';
+                self.addEventListener('install',e=>self.skipWaiting());
+                self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+                self.addEventListener('fetch',e=>{
+                    if(e.request.method!=='GET')return;
+                    e.respondWith(
+                        caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+                            if(res.ok && e.request.url.startsWith(self.location.origin)){
+                                const cl=res.clone();
+                                caches.open(C).then(ca=>ca.put(e.request,cl));
+                            }
+                            return res;
+                        }).catch(()=>caches.match(e.request)))
+                    );
+                });
+            `;
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            await navigator.serviceWorker.register(swUrl);
+        } catch (e) {
+            console.warn('SW register failed', e);
+        }
+    }
+}
+
+init().catch(err => {
+    console.error(err);
+    $('#content').innerHTML = `
+        <div class="empty">
+            <div class="empty-icon">😕</div>
+            <div class="empty-text">Gagal memuat. Periksa koneksi internet Anda.<br><br>${escapeHtml(err.message)}</div>
+        </div>`;
+});
+</script>
 </body>
-</html>
+    </html>
